@@ -55,20 +55,20 @@ class EpisodeReplayEnv:
         return self._paths[self._mode]
 
     @property
-    def observations(self):
-        return self._episode.observations
+    def obs(self):
+        return self._episode.obs
 
     @property
-    def actions(self):
-        return self._episode.actions
+    def act(self):
+        return self._episode.act
 
     @property
-    def rewards(self):
-        return self._episode.rewards
+    def rew(self):
+        return self._episode.rew
 
     @property
-    def ends(self):
-        return self._episode.ends
+    def end(self):
+        return self._episode.end
 
     def reset(self):
         return self.observations[self._t]

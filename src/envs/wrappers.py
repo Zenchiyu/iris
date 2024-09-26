@@ -4,6 +4,7 @@ Credits to https://github.com/openai/baselines/blob/master/baselines/common/atar
 
 from typing import Tuple
 
+import crafter
 import gym
 import numpy as np
 from PIL import Image
@@ -24,6 +25,9 @@ def make_atari(id, size=64, max_episode_steps=None, noop_max=30, frame_skip=4, d
         env = EpisodicLifeEnv(env)
     return env
 
+def make_crafter(size):
+    return crafter.Env(size=(size, size))
+    
 
 class ResizeObsWrapper(gym.ObservationWrapper):
     def __init__(self, env: gym.Env, size: Tuple[int, int]) -> None:

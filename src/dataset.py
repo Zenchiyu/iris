@@ -83,7 +83,7 @@ class EpisodesDataset:
         batch = {}
         for k in episodes_segments[0]:
             batch[k] = torch.stack([e_s[k] for e_s in episodes_segments])
-        batch['observations'] = batch['observations'].float() / 255.0  # int8 to float and scale
+        batch['obs'] = batch['obs'].float() / 255.0  # int8 to float and scale
         return batch
 
     def traverse(self, batch_num_samples: int, chunk_size: int):
@@ -112,41 +112,41 @@ class EpisodesDataset:
             self.episodes.append(episode)
 
 
-class EpisodesDatasetRamMonitoring(EpisodesDataset):
-    """
-    Prevent episode dataset from going out of RAM.
-    Warning: % looks at system wide RAM usage while G looks only at process RAM usage.
-    """
-    def __init__(self, max_ram_usage: str, name: Optional[str] = None) -> None:
-        super().__init__(max_num_episodes=None, name=name)
-        self.max_ram_usage = max_ram_usage
-        self.num_steps = 0
-        self.max_num_steps = None
+# class EpisodesDatasetRamMonitoring(EpisodesDataset):
+#     """
+#     Prevent episode dataset from going out of RAM.
+#     Warning: % looks at system wide RAM usage while G looks only at process RAM usage.
+#     """
+#     def __init__(self, max_ram_usage: str, name: Optional[str] = None) -> None:
+#         super().__init__(max_num_episodes=None, name=name)
+#         self.max_ram_usage = max_ram_usage
+#         self.num_steps = 0
+#         self.max_num_steps = None
 
-        max_ram_usage = str(max_ram_usage)
-        if max_ram_usage.endswith('%'):
-            m = int(max_ram_usage.split('%')[0])
-            assert 0 < m < 100
-            self.check_ram_usage = lambda: psutil.virtual_memory().percent > m
-        else:
-            assert max_ram_usage.endswith('G')
-            m = float(max_ram_usage.split('G')[0])
-            self.check_ram_usage = lambda: psutil.Process().memory_info()[0] / 2 ** 30 > m
+#         max_ram_usage = str(max_ram_usage)
+#         if max_ram_usage.endswith('%'):
+#             m = int(max_ram_usage.split('%')[0])
+#             assert 0 < m < 100
+#             self.check_ram_usage = lambda: psutil.virtual_memory().percent > m
+#         else:
+#             assert max_ram_usage.endswith('G')
+#             m = float(max_ram_usage.split('G')[0])
+#             self.check_ram_usage = lambda: psutil.Process().memory_info()[0] / 2 ** 30 > m
 
-    def clear(self) -> None:
-        super().clear()
-        self.num_steps = 0
+#     def clear(self) -> None:
+#         super().clear()
+#         self.num_steps = 0
 
-    def add_episode(self, episode: Episode) -> int:
-        if self.max_num_steps is None and self.check_ram_usage():
-            self.max_num_steps = self.num_steps
-        self.num_steps += len(episode)
-        while (self.max_num_steps is not None) and (self.num_steps > self.max_num_steps):
-            self._popleft()
-        episode_id = self._append_new_episode(episode)
-        return episode_id
+#     def add_episode(self, episode: Episode) -> int:
+#         if self.max_num_steps is None and self.check_ram_usage():
+#             self.max_num_steps = self.num_steps
+#         self.num_steps += len(episode)
+#         while (self.max_num_steps is not None) and (self.num_steps > self.max_num_steps):
+#             self._popleft()
+#         episode_id = self._append_new_episode(episode)
+#         return episode_id
 
-    def _popleft(self) -> Episode:
-        episode = super()._popleft()
-        self.num_steps -= len(episode)
-        return episode
+#     def _popleft(self) -> Episode:
+#         episode = super()._popleft()
+#         self.num_steps -= len(episode)
+#         return episode

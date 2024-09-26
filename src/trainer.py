@@ -15,13 +15,14 @@ from tqdm import tqdm
 import wandb
 
 from agent import Agent
-from collector import Collector
+# from collector import Collector
 from envs import SingleProcessEnv, MultiProcessEnv
 from episode import Episode
 from make_reconstructions import make_reconstructions_from_batch
 from models.actor_critic import ActorCritic
 from models.world_model import WorldModel
 from utils import configure_optimizer, EpisodeDirManager, set_seed
+
 
 
 class Trainer:
@@ -57,11 +58,7 @@ class Trainer:
             self.media_dir.mkdir(exist_ok=False, parents=False)
             self.episode_dir.mkdir(exist_ok=False, parents=False)
             self.reconstructions_dir.mkdir(exist_ok=False, parents=False)
-
-        episode_manager_train = EpisodeDirManager(self.episode_dir / 'train', max_num_episodes=cfg.collection.train.num_episodes_to_save)
-        episode_manager_test = EpisodeDirManager(self.episode_dir / 'test', max_num_episodes=cfg.collection.test.num_episodes_to_save)
-        self.episode_manager_imagination = EpisodeDirManager(self.episode_dir / 'imagination', max_num_episodes=cfg.evaluation.actor_critic.num_episodes_to_save)
-
+        
         def create_env(cfg_env, num_envs):
             env_fn = partial(instantiate, config=cfg_env)
             return MultiProcessEnv(env_fn, num_envs, should_wait_num_envs_ratio=1.0) if num_envs > 1 else SingleProcessEnv(env_fn)
@@ -69,12 +66,16 @@ class Trainer:
         if self.cfg.training.should:
             train_env = create_env(cfg.env.train, cfg.collection.train.num_envs)
             self.train_dataset = instantiate(cfg.datasets.train)
-            self.train_collector = Collector(train_env, self.train_dataset, episode_manager_train)
+            # TODO test:
+            self.train_dataset.load_disk_checkpoint(Path("~/workspace/data/crafter_flattened/train").expanduser())
+            # self.train_collector = Collector(train_env, self.train_dataset, episode_manager_train)
 
         if self.cfg.evaluation.should:
             test_env = create_env(cfg.env.test, cfg.collection.test.num_envs)
             self.test_dataset = instantiate(cfg.datasets.test)
-            self.test_collector = Collector(test_env, self.test_dataset, episode_manager_test)
+            # TODO train:
+            self.test_dataset.load_disk_checkpoint(Path("~/workspace/data/crafter_flattened/valid").expanduser())
+            # self.test_collector = Collector(test_env, self.test_dataset, episode_manager_test)
 
         assert self.cfg.training.should or self.cfg.evaluation.should
         env = train_env if self.cfg.training.should else test_env
@@ -106,13 +107,13 @@ class Trainer:
             to_log = []
 
             if self.cfg.training.should:
-                if epoch <= self.cfg.collection.train.stop_after_epochs:
-                    to_log += self.train_collector.collect(self.agent, epoch, **self.cfg.collection.train.config)
+                # if epoch <= self.cfg.collection.train.stop_after_epochs:
+                #     to_log += self.train_collector.collect(self.agent, epoch, **self.cfg.collection.train.config)
                 to_log += self.train_agent(epoch)
 
             if self.cfg.evaluation.should and (epoch % self.cfg.evaluation.every == 0):
-                self.test_dataset.clear()
-                to_log += self.test_collector.collect(self.agent, epoch, **self.cfg.collection.test.config)
+                # self.test_dataset.clear()
+                # to_log += self.test_collector.collect(self.agent, epoch, **self.cfg.collection.test.config)
                 to_log += self.eval_agent(epoch)
 
             if self.cfg.training.should:
@@ -190,8 +191,8 @@ class Trainer:
         if epoch > cfg_world_model.start_after_epochs:
             metrics_world_model = self.eval_component(self.agent.world_model, cfg_world_model.batch_num_samples, sequence_length=self.cfg.common.sequence_length, tokenizer=self.agent.tokenizer)
 
-        if epoch > cfg_actor_critic.start_after_epochs:
-            self.inspect_imagination(epoch)
+        # if epoch > cfg_actor_critic.start_after_epochs:
+        #     self.inspect_imagination(epoch)
 
         if cfg_tokenizer.save_reconstructions:
             batch = self._to_device(self.test_dataset.sample_batch(batch_num_samples=3, sequence_length=self.cfg.common.sequence_length))
@@ -222,24 +223,24 @@ class Trainer:
         metrics = {f'{str(component)}/eval/total_loss': loss_total_epoch / steps, **intermediate_losses}
         return metrics
 
-    @torch.no_grad()
-    def inspect_imagination(self, epoch: int) -> None:
-        mode_str = 'imagination'
-        batch = self.test_dataset.sample_batch(batch_num_samples=self.episode_manager_imagination.max_num_episodes, sequence_length=1 + self.cfg.training.actor_critic.burn_in, sample_from_start=False)
-        outputs = self.agent.actor_critic.imagine(self._to_device(batch), self.agent.tokenizer, self.agent.world_model, horizon=self.cfg.evaluation.actor_critic.horizon, show_pbar=True)
+    # @torch.no_grad()
+    # def inspect_imagination(self, epoch: int) -> None:
+    #     mode_str = 'imagination'
+    #     batch = self.test_dataset.sample_batch(batch_num_samples=self.episode_manager_imagination.max_num_episodes, sequence_length=1 + self.cfg.training.actor_critic.burn_in, sample_from_start=False)
+    #     outputs = self.agent.actor_critic.imagine(self._to_device(batch), self.agent.tokenizer, self.agent.world_model, horizon=self.cfg.evaluation.actor_critic.horizon, show_pbar=True)
 
-        to_log = []
-        for i, (o, a, r, d) in enumerate(zip(outputs.observations.cpu(), outputs.actions.cpu(), outputs.rewards.cpu(), outputs.ends.long().cpu())):  # Make everything (N, T, ...) instead of (T, N, ...)
-            episode = Episode(o, a, r, d, torch.ones_like(d))
-            episode_id = (epoch - 1 - self.cfg.training.actor_critic.start_after_epochs) * outputs.observations.size(0) + i
-            self.episode_manager_imagination.save(episode, episode_id, epoch)
+    #     to_log = []
+    #     for i, (o, a, r, d) in enumerate(zip(outputs.observations.cpu(), outputs.actions.cpu(), outputs.rewards.cpu(), outputs.ends.long().cpu())):  # Make everything (N, T, ...) instead of (T, N, ...)
+    #         episode = Episode(o, a, r, d, torch.ones_like(d))
+    #         episode_id = (epoch - 1 - self.cfg.training.actor_critic.start_after_epochs) * outputs.observations.size(0) + i
+    #         self.episode_manager_imagination.save(episode, episode_id, epoch)
 
-            metrics_episode = {k: v for k, v in episode.compute_metrics().__dict__.items()}
-            metrics_episode['episode_num'] = episode_id
-            metrics_episode['action_histogram'] = wandb.Histogram(episode.actions.numpy(), num_bins=self.agent.world_model.act_vocab_size)
-            to_log.append({f'{mode_str}/{k}': v for k, v in metrics_episode.items()})
+    #         metrics_episode = {k: v for k, v in episode.compute_metrics().__dict__.items()}
+    #         metrics_episode['episode_num'] = episode_id
+    #         metrics_episode['action_histogram'] = wandb.Histogram(episode.actions.numpy(), num_bins=self.agent.world_model.act_vocab_size)
+    #         to_log.append({f'{mode_str}/{k}': v for k, v in metrics_episode.items()})
 
-        return to_log
+    #     return to_log
 
     def _save_checkpoint(self, epoch: int, save_agent_only: bool) -> None:
         torch.save(self.agent.state_dict(), self.ckpt_dir / 'last.pt')

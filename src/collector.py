@@ -42,7 +42,7 @@ class Collector:
             current_episodes = [self.dataset.get_episode(episode_id) for episode_id in self.episode_ids]
             segmented_episodes = [episode.segment(start=len(episode) - burn_in, stop=len(episode), should_pad=True) for episode in current_episodes]
             mask_padding = torch.stack([episode.mask_padding for episode in segmented_episodes], dim=0).to(agent.device)
-            burnin_obs = torch.stack([episode.observations for episode in segmented_episodes], dim=0).float().div(255).to(agent.device)
+            burnin_obs = torch.stack([episode.obs for episode in segmented_episodes], dim=0).float().div(255).to(agent.device)
             burnin_obs_rec = torch.clamp(agent.tokenizer.encode_decode(burnin_obs, should_preprocess=True, should_postprocess=True), 0, 1)
 
         agent.actor_critic.reset(n=self.env.num_envs, burnin_observations=burnin_obs_rec, mask_padding=mask_padding)
@@ -83,7 +83,7 @@ class Collector:
                     self.episode_dir_manager.save(episode, episode_id, epoch)
                     metrics_episode = {k: v for k, v in episode.compute_metrics().__dict__.items()}
                     metrics_episode['episode_num'] = episode_id
-                    metrics_episode['action_histogram'] = wandb.Histogram(np_histogram=np.histogram(episode.actions.numpy(), bins=np.arange(0, self.env.num_actions + 1) - 0.5, density=True))
+                    metrics_episode['action_histogram'] = wandb.Histogram(np_histogram=np.histogram(episode.act.numpy(), bins=np.arange(0, self.env.num_actions + 1) - 0.5, density=True))
                     to_log.append({f'{self.dataset.name}/{k}': v for k, v in metrics_episode.items()})
                     returns.append(metrics_episode['episode_return'])
 
@@ -113,10 +113,10 @@ class Collector:
         assert len(observations) == len(actions) == len(rewards) == len(dones)
         for i, (o, a, r, d) in enumerate(zip(*map(lambda arr: np.swapaxes(arr, 0, 1), [observations, actions, rewards, dones]))):  # Make everything (N, T, ...) instead of (T, N, ...)
             episode = Episode(
-                observations=torch.ByteTensor(o).permute(0, 3, 1, 2).contiguous(),  # channel-first
-                actions=torch.LongTensor(a),
-                rewards=torch.FloatTensor(r),
-                ends=torch.LongTensor(d),
+                obs=torch.ByteTensor(o).permute(0, 3, 1, 2).contiguous(),  # channel-first
+                act=torch.LongTensor(a),
+                rew=torch.FloatTensor(r),
+                end=torch.LongTensor(d),
                 mask_padding=torch.ones(d.shape[0], dtype=torch.bool),
             )
             if self.episode_ids[i] is None:
