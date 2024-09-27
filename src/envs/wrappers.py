@@ -26,7 +26,7 @@ def make_atari(id, size=64, max_episode_steps=None, noop_max=30, frame_skip=4, d
     return env
 
 def make_crafter(size):
-    return CrafterEnv(size)
+    return ResizeObsWrapper(CrafterEnv(size), (size, size))
 
 class CrafterEnv(gym.Env):
     def __init__(self, size: int = 64):
@@ -35,8 +35,7 @@ class CrafterEnv(gym.Env):
         self.action_space = gym.spaces.Discrete(17)
 
     def reset(self, *args, **kwargs):
-        obs = self.env.reset()
-        return obs, {}
+        return self.env.reset()
 
     def step(self, act):
         return self.env.step(act)
