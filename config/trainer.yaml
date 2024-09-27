@@ -7,7 +7,7 @@ defaults:
   - datasets: default
 
 wandb:
-  mode: disabled # online
+  mode: online
   project: iris
   entity: null
   name: null

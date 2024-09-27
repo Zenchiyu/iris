@@ -194,9 +194,9 @@ class Trainer:
         # if epoch > cfg_actor_critic.start_after_epochs:
         #     self.inspect_imagination(epoch)
 
-        if cfg_tokenizer.save_reconstructions:
-            batch = self._to_device(self.test_dataset.sample_batch(batch_num_samples=3, sequence_length=self.cfg.common.sequence_length))
-            make_reconstructions_from_batch(batch, save_dir=self.reconstructions_dir, epoch=epoch, tokenizer=self.agent.tokenizer)
+        # if cfg_tokenizer.save_reconstructions:
+        #     batch = self._to_device(self.test_dataset.sample_batch(batch_num_samples=3, sequence_length=self.cfg.common.sequence_length))
+        #     make_reconstructions_from_batch(batch, save_dir=self.reconstructions_dir, epoch=epoch, tokenizer=self.agent.tokenizer)
 
         return [metrics_tokenizer, metrics_world_model]
 
