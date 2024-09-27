@@ -57,10 +57,10 @@ class Collector:
             if random.random() < epsilon:
                 act = self.heuristic.act(obs).cpu().numpy()
 
-            self.obs, reward, done, _ = self.env.step(act)
+            self.obs, rew, done, _ = self.env.step(act)
 
             actions.append(act)
-            rewards.append(reward)
+            rewards.append(rew)
             dones.append(done)
 
             new_steps = len(self.env.mask_new_dones)

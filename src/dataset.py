@@ -64,7 +64,7 @@ class EpisodesDataset:
     def sample_batch(self, batch_num_samples: int, sequence_length: int, sample_from_start: bool = True) -> Batch:
         return self._collate_episodes_segments(self._sample_episodes_segments(batch_num_samples, sequence_length, sample_from_start))
 
-    def _sample_episodes_segments(self, batch_num_samples: int, sequence_length: int, sample_from_start: bool) -> List[Episode]:
+    def _sample_episodes_segments(self, batch_num_samples: int, sequence_length: int, sample_from_start: bool) -> List[Episode]:    # TODO: should I change it so that it's similar to DIAMOND?
         sampled_episodes = random.choices(self.episodes, k=batch_num_samples)
         sampled_episodes_segments = []
         for sampled_episode in sampled_episodes:

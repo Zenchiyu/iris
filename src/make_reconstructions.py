@@ -21,7 +21,7 @@ def make_reconstructions_from_batch(batch, save_dir, epoch, tokenizer):
 
 
 def check_batch(batch):
-    assert sorted(batch.keys()) == ['act', 'end', 'mask_padding', 'obs', 'rew']
+    assert sorted(batch.keys()) == ['act', 'end', 'mask_padding', 'obs', 'rew', 'trunc']
     b, t, _, _, _ = batch['obs'].shape  # (B, T, C, H, W)
     assert batch['act'].shape == batch['rew'].shape == batch['end'].shape == batch['mask_padding'].shape == (b, t)
 
