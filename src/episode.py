@@ -25,12 +25,14 @@ class Episode:
         self.mask_padding = torch.ones_like(self.trunc, dtype=torch.bool)
         assert len(self.obs) == len(self.act) == len(self.rew) == len(self.end) == len(self.trunc) == len(self.mask_padding)
         
+        self.end = self.end.to(torch.long)    # TODO: be careful about overflows with masked_fill !!
+
         if self.end.sum() > 0:
             idx_end = torch.argmax(self.end) + 1
             self.obs = self.obs[:idx_end]
             self.act = self.act[:idx_end]
             self.rew = self.rew[:idx_end]
-            self.end = self.end[:idx_end].to(torch.long)    # TODO: be careful about overflows with masked_fill !!
+            self.end = self.end[:idx_end]
             self.trunc = self.trunc[:idx_end]
             self.mask_padding = torch.ones(idx_end, dtype=torch.bool) # self.mask_padding[:idx_end]
 
