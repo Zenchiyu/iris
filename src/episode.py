@@ -30,7 +30,7 @@ class Episode:
             self.obs = self.obs[:idx_end]
             self.act = self.act[:idx_end]
             self.rew = self.rew[:idx_end]
-            self.end = self.end[:idx_end]
+            self.end = self.end[:idx_end].to(torch.long)    # TODO: be careful about overflows with masked_fill !!
             self.trunc = self.trunc[:idx_end]
             self.mask_padding = torch.ones(idx_end, dtype=torch.bool) # self.mask_padding[:idx_end]
 
