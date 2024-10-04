@@ -19,7 +19,7 @@ from agent import Agent
 from envs import SingleProcessEnv, MultiProcessEnv
 from episode import Episode
 from make_reconstructions import make_reconstructions_from_batch
-from models.actor_critic import ActorCritic
+# from models.actor_critic import ActorCritic
 from models.world_model import WorldModel
 from utils import configure_optimizer, set_seed
 
@@ -82,15 +82,15 @@ class Trainer:
 
         tokenizer = instantiate(cfg.tokenizer)
         world_model = WorldModel(obs_vocab_size=tokenizer.vocab_size, act_vocab_size=env.num_actions, config=instantiate(cfg.world_model))
-        actor_critic = ActorCritic(**cfg.actor_critic, act_vocab_size=env.num_actions)
-        self.agent = Agent(tokenizer, world_model, actor_critic).to(self.device)
+        # actor_critic = ActorCritic(**cfg.actor_critic, act_vocab_size=env.num_actions)
+        self.agent = Agent(tokenizer, world_model).to(self.device)
         print(f'{sum(p.numel() for p in self.agent.tokenizer.parameters())} parameters in agent.tokenizer')
         print(f'{sum(p.numel() for p in self.agent.world_model.parameters())} parameters in agent.world_model')
-        print(f'{sum(p.numel() for p in self.agent.actor_critic.parameters())} parameters in agent.actor_critic')
+        # print(f'{sum(p.numel() for p in self.agent.actor_critic.parameters())} parameters in agent.actor_critic')
 
         self.optimizer_tokenizer = torch.optim.Adam(self.agent.tokenizer.parameters(), lr=cfg.training.learning_rate)
         self.optimizer_world_model = configure_optimizer(self.agent.world_model, cfg.training.learning_rate, cfg.training.world_model.weight_decay)
-        self.optimizer_actor_critic = torch.optim.Adam(self.agent.actor_critic.parameters(), lr=cfg.training.learning_rate)
+        # self.optimizer_actor_critic = torch.optim.Adam(self.agent.actor_critic.parameters(), lr=cfg.training.learning_rate)
 
         if cfg.initialization.path_to_checkpoint is not None:
             self.agent.load(**cfg.initialization, device=self.device)
@@ -129,11 +129,11 @@ class Trainer:
         self.agent.train()
         self.agent.zero_grad()
 
-        metrics_tokenizer, metrics_world_model, metrics_actor_critic = {}, {}, {}
+        metrics_tokenizer, metrics_world_model = {}, {}
 
         cfg_tokenizer = self.cfg.training.tokenizer
         cfg_world_model = self.cfg.training.world_model
-        cfg_actor_critic = self.cfg.training.actor_critic
+        # cfg_actor_critic = self.cfg.training.actor_critic
 
         if epoch > cfg_tokenizer.start_after_epochs:
             metrics_tokenizer = self.train_component(self.agent.tokenizer, self.optimizer_tokenizer, sequence_length=1, sample_from_start=True, **cfg_tokenizer)
@@ -147,7 +147,7 @@ class Trainer:
         #     metrics_actor_critic = self.train_component(self.agent.actor_critic, self.optimizer_actor_critic, sequence_length=1 + self.cfg.training.actor_critic.burn_in, sample_from_start=False, tokenizer=self.agent.tokenizer, world_model=self.agent.world_model, **cfg_actor_critic)
         # self.agent.actor_critic.eval()
 
-        return [{'epoch': epoch, **metrics_tokenizer, **metrics_world_model, **metrics_actor_critic}]
+        return [{'epoch': epoch, **metrics_tokenizer, **metrics_world_model}]
 
     def train_component(self, component: nn.Module, optimizer: torch.optim.Optimizer, steps_per_epoch: int, batch_num_samples: int, grad_acc_steps: int, max_grad_norm: Optional[float], sequence_length: int, sample_from_start: bool, **kwargs_loss: Any) -> Dict[str, float]:
         loss_total_epoch = 0.0
@@ -183,7 +183,7 @@ class Trainer:
 
         cfg_tokenizer = self.cfg.evaluation.tokenizer
         cfg_world_model = self.cfg.evaluation.world_model
-        cfg_actor_critic = self.cfg.evaluation.actor_critic
+        # cfg_actor_critic = self.cfg.evaluation.actor_critic
 
         if epoch > cfg_tokenizer.start_after_epochs:
             metrics_tokenizer = self.eval_component(self.agent.tokenizer, cfg_tokenizer.batch_num_samples, sequence_length=1)
@@ -249,7 +249,7 @@ class Trainer:
             torch.save({
                 "optimizer_tokenizer": self.optimizer_tokenizer.state_dict(),
                 "optimizer_world_model": self.optimizer_world_model.state_dict(),
-                "optimizer_actor_critic": self.optimizer_actor_critic.state_dict(),
+                # "optimizer_actor_critic": self.optimizer_actor_critic.state_dict(),
             }, self.ckpt_dir / 'optimizer.pt')
             ckpt_dataset_dir = self.ckpt_dir / 'dataset'
             ckpt_dataset_dir.mkdir(exist_ok=True, parents=False)
@@ -270,7 +270,7 @@ class Trainer:
         ckpt_opt = torch.load(self.ckpt_dir / 'optimizer.pt', map_location=self.device)
         self.optimizer_tokenizer.load_state_dict(ckpt_opt['optimizer_tokenizer'])
         self.optimizer_world_model.load_state_dict(ckpt_opt['optimizer_world_model'])
-        self.optimizer_actor_critic.load_state_dict(ckpt_opt['optimizer_actor_critic'])
+        # self.optimizer_actor_critic.load_state_dict(ckpt_opt['optimizer_actor_critic'])
         self.train_dataset.load_disk_checkpoint(self.ckpt_dir / 'dataset')
         if self.cfg.evaluation.should:
             self.test_dataset.num_seen_episodes = torch.load(self.ckpt_dir / 'num_seen_episodes_test_dataset.pt')
